@@ -6,7 +6,7 @@ import math
 class MyGUI:
     def __init__(self):
         self.played = []
-        self.triples = np.empty(shape=(3,3,3))
+        self.triples = np.empty(shape=(3,3,3)) # Leere Matrix mit 3x3x3 Einträgen
         self.answered = []
         self.score= [0,0]
         self.prediction = rd.randint(0,2)
@@ -77,11 +77,11 @@ class MyGUI:
         if len(self.played)<3:
             self.prediction = rd.randint(0,2)
         else:
-            pre1, pre2, pre3 = self.played[-1], self.played[-2], self.played[-3]
-            self.triples[pre3, pre2, pre1] += 1
-            ertrag = np.diff(self.triples[pre2, pre1, [1, 2, 0, 1]])
+            pre1, pre2, pre3 = self.played[-1], self.played[-2], self.played[-3] # letzer, vorletzer, vorvorletzer Zug
+            self.triples[pre3, pre2, pre1] += 1 # Triplefreqs werden continuously geupdated
+            ertrag = np.diff(self.triples[pre2, pre1, [1, 2, 0, 1]]) # 2. - 1., 0. - 2., 1. - 0.
             #ertrag = [situation[2]-situation[1], situation[0]-situation[2] ,situation[1]-situation[0]]
-            gute_züge = np.argwhere(ertrag == np.amax(ertrag)).flatten()
+            gute_züge = np.argwhere(ertrag == np.amax(ertrag)).flatten() # Alle Züge mit maximalen Ertrag, Flatten machts in eine Dimension
             #gute_züge= [i for i in [0,1,2] if ertrag[i] == max(ertrag)]
             self.prediction = np.random.choice(gute_züge)
             
