@@ -6,7 +6,7 @@ import math
 class MyGUI:
     def __init__(self):
         self.played = []
-        self.triples = np.empty(shape=(3,3,3)) # Leere Matrix mit 3x3x3 Einträgen
+        self.triples = np.zeros(shape=(3,3,3)) # Leere Matrix mit 3x3x3 Einträgen #habe zeros genommen statt empty, so hab ich exakte 0len darin
         self.answered = []
         self.score= [0,0]
         self.prediction = rd.randint(0,2)
@@ -25,13 +25,13 @@ class MyGUI:
         self.botplayed = tk.Label(self.root, textvariable = self.botstring, font=("Arial",20))
         self.botplayed.pack()                
 
-        self.scherebutton = tk.Button(self.root, text="Schere", command=self.schereplayed, font=("Arial bold",20))
+        self.scherebutton = tk.Button(self.root, text="Schere", command=self.schereclicked, font=("Arial bold",20))
         self.scherebutton.pack(fill="x",pady=7, padx=7)
 
-        self.steinbutton = tk.Button(self.root, text="Stein",font=("Arial bold",20), command=self.steinplayed)
+        self.steinbutton = tk.Button(self.root, text="Stein",font=("Arial bold",20), command=self.steinclicked)
         self.steinbutton.pack(fill="x",pady=7, padx=7)
 
-        self.papierbutton = tk.Button(self.root, text="Papier", font=("Arial bold",20), command=self.papierplayed)
+        self.papierbutton = tk.Button(self.root, text="Papier", font=("Arial bold",20), command=self.papierclicked)
         self.papierbutton.pack(fill="x",pady=7, padx=7)
 
         self.entropiestring = tk.StringVar()
@@ -49,8 +49,8 @@ class MyGUI:
         self.clearbutton = tk.Button(self.frame, text="Clear", command=self.clearmehr)
         self.clearbutton.grid(row=0,column=1, padx=3)
 
-        self.clearbutton = tk.Button(self.frame, text="Spielen", command=self.mehrspielen)
-        self.clearbutton.grid(row=0,column=2)
+        self.spielenbutton = tk.Button(self.frame, text="Spielen", command=self.mehrspielen)
+        self.spielenbutton.grid(row=0,column=2)
     
         self.root.mainloop()
     def mehrspielen(self):
@@ -62,6 +62,7 @@ class MyGUI:
                 self.steinplayed()
             if c=="2":
                 self.papierplayed()
+        self.updatestats()
 
     def clearmehr(self):
         self.mehr.delete(0,tk.END)
@@ -80,11 +81,20 @@ class MyGUI:
             pre1, pre2, pre3 = self.played[-1], self.played[-2], self.played[-3] # letzer, vorletzer, vorvorletzer Zug
             self.triples[pre3, pre2, pre1] += 1 # Triplefreqs werden continuously geupdated
             ertrag = np.diff(self.triples[pre2, pre1, [1, 2, 0, 1]]) # 2. - 1., 0. - 2., 1. - 0.
-            #ertrag = [situation[2]-situation[1], situation[0]-situation[2] ,situation[1]-situation[0]]
             gute_züge = np.argwhere(ertrag == np.amax(ertrag)).flatten() # Alle Züge mit maximalen Ertrag, Flatten machts in eine Dimension
-            #gute_züge= [i for i in [0,1,2] if ertrag[i] == max(ertrag)]
             self.prediction = np.random.choice(gute_züge)
-            
+
+    def schereclicked(self):
+        self.schereplayed()
+        self.updatestats()
+
+    def steinclicked(self):
+        self.steinplayed()
+        self.updatestats()
+
+    def papierclicked(self):
+        self.papierplayed()
+        self.updatestats()
     
     def schereplayed(self):
         self.played.append(0)
@@ -95,7 +105,6 @@ class MyGUI:
             self.playerwin()
             
         self.newprediction()
-        self.updateentropie()
         
     def steinplayed(self):
         self.played.append(1)
@@ -106,7 +115,6 @@ class MyGUI:
             self.playerwin()
         
         self.newprediction()
-        self.updateentropie()
         
     def papierplayed(self):
         self.played.append(2)
@@ -117,7 +125,6 @@ class MyGUI:
             self.playerwin()
             
         self.newprediction()
-        self.updateentropie()
         
     def botwin(self):
         self.score[1]+=1
@@ -127,23 +134,20 @@ class MyGUI:
         self.updatescore()
     def updatescore(self):
         self.scorestring.set(str(self.score[0]) + ":" + str(self.score[1]))
-    def updateentropie(self):
+    
+    def updatestats(self):
+        """
+        Berechnet die Entropie dritter Ordnung der bisherigen Eingaben. Konvergiert diese nicht gegen 1, so sollte der Computer gewinnen.
+        """
         n = len(self.played)
-        freq = [ len([x for x in self.played if x==i])/n for i in [0,1,2]]
-        e1 = sum([-math.log(f) / math.log(3) * f for f in freq if f!=0])
-
-        if n==1:
-            self.entropiestring.set("Entropie:" + str(e1) )
-        else:
-            pairs = list(zip(self.played,self.played[1:]))
-            freqs = [[0 for i in range(3)] for j in range(3)]
-            for (fst,snd) in pairs:
-                freqs[fst][snd]+=1
-            e2 = 0
-            for i in [0,1,2]:
-                if sum(freqs[i])>0:
-                    z = sum(freqs[i])
-                    k= sum([-math.log(f/z) / math.log(3) * f/z for f in freqs[i] if f!=0])
-                    e2+= k * z/(n-1)
-            self.entropiestring.set("Entropie:" + str(e1) +"\nEntropie2:" + str(e2))
+        e3 = 0
+        for pr3 in range(3):
+            for pr2 in range(3):
+                total = np.sum(self.triples[pr3,pr2])
+                if total>0:
+                    weight = total/n
+                    esmall = sum([-math.log(f) / math.log(3) * f for f in self.triples[pr3,pr2]/total if f!=0 ])
+                    e3+= weight * esmall
+        self.entropiestring.set("Entropie:" + str(e3) +" trits.")
+        
 MyGUI()     
